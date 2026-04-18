@@ -619,9 +619,9 @@ function addPatient(data) {
       '<div class="section" style="margin-top:8px">'+
         '<div class="section-label">Кількість щоденників</div>'+
         '<div class="options-row">'+
-          '<span class="opt" data-container="mode-'+id+'" data-index="0" onclick="setMode(this,'+id+',1)">1</span>'+
-          '<span class="opt" data-container="mode-'+id+'" data-index="1" onclick="setMode(this,'+id+',2)">2 (ранок + вечір)</span>'+
-          '<span class="opt" data-container="mode-'+id+'" data-index="2" onclick="setMode(this,'+id+',3)">3 (ранок + вечір + ранок)</span>'+
+          '<span class="opt" data-container="mode-'+id+'" data-index="0" onclick="setMode(this,'+id+',1)">1 щоденник</span>'+
+          '<span class="opt" data-container="mode-'+id+'" data-index="1" onclick="setMode(this,'+id+',2)">2 (вечір + ранок)</span>'+
+          '<span class="opt" data-container="mode-'+id+'" data-index="2" onclick="setMode(this,'+id+',3)">3 (день + вечір + ранок)</span>'+
         '</div>'+
         '<div id="dyn-eve-'+id+'" style="display:none;margin-top:8px">'+
           '<div class="section-label">Вечір · Динаміка</div>'+
@@ -1028,7 +1028,7 @@ function buildText(id) {
 function setMode(el, id, mode) {
   document.querySelectorAll('[data-container="mode-'+id+'"]').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
-  document.getElementById('dyn-eve-'+id).style.display  = mode >= 2 ? 'block' : 'none';
+  document.getElementById('dyn-eve-'+id).style.display  = mode >= 3 ? 'block' : 'none';
   document.getElementById('dyn-morn-'+id).style.display = mode >= 3 ? 'block' : 'none';
 }
 
@@ -1067,10 +1067,28 @@ function getAgeIdx(id) {
 }
 
 function insertAfterStan(lines, text) {
-  // вставляємо після рядка що містить "Стан"
   const idx = lines.findIndex(l => l.startsWith('Стан '));
   if (idx >= 0) { lines.splice(idx + 1, 0, text); }
   else { lines.splice(1, 0, text); }
+}
+
+function formatDyn(sel) {
+  if (!sel.length) return '';
+  if (sel[0] === 'без динаміки') return 'Без динаміки.';
+  return 'Динаміка ' + sel[0] + '.';
+}
+
+function buildDiary(baseText, ageIdx, id, nightText, dynText) {
+  const lines = baseText.split('\n');
+  // нові вітальні
+  if (ageIdx >= 0) {
+    const vi = lines.findIndex(l => l.includes('Т -'));
+    if (vi >= 0) lines[vi] = buildVitals(id, ageIdx);
+  }
+  // після стану: спочатку ніч, потім динаміка
+  if (dynText) insertAfterStan(lines, dynText);
+  if (nightText) insertAfterStan(lines, nightText);
+  return lines.join('\n');
 }
 
 function generateOne(id) {
@@ -1078,38 +1096,38 @@ function generateOne(id) {
   const results = [];
   const base = buildText(id);
   const name = base.name;
+  const ageIdx = getAgeIdx(id);
 
   if (mode === 1) {
+    // 1 щоденник — як є
     results.push({ name, text: base.text });
+
+  } else if (mode === 2) {
+    // 2 щоденники: вечір (без динаміки) + ранок (ніч + динаміка)
+    const eveText = buildDiary(base.text, ageIdx, id, '', '');
+    results.push({ name: name + ' · Вечір', text: eveText });
+
+    const nightSel = getSelected('night-'+id);
+    const nightOther = getVal('night-other-'+id);
+    const nightText = nightSel.length ? nightSel[0][0].toUpperCase()+nightSel[0].slice(1)+'.' : (nightOther ? nightOther+'.' : '');
+    const dyn2 = getSelected('dyn2-'+id);
+    const mornText = buildDiary(base.text, ageIdx, id, nightText, formatDyn(dyn2));
+    results.push({ name: name + ' · Ранок', text: mornText });
+
   } else {
-    // Щоденник 1 — ранок
-    results.push({ name: name + ' · Ранок', text: base.text });
+    // 3 щоденники: день + вечір (динаміка) + ранок (ніч + динаміка)
+    results.push({ name: name + ' · День', text: base.text });
 
-    // Щоденник 2 — вечір
     const dyn1 = getSelected('dyn1-'+id);
-    const ageIdx = getAgeIdx(id);
-    const vitEve = ageIdx >= 0 ? buildVitals(id, ageIdx) : base.text.split('\n')[0];
-    const dynEveText = dyn1.length ? 'Динаміка '+dyn1[0]+'.': '';
-    const eveLines = base.text.split('\n');
-    eveLines[eveLines.findIndex(l => l.includes('Т -'))] = vitEve;
-    if (dynEveText) insertAfterStan(eveLines, dynEveText);
-    results.push({ name: name + ' · Вечір', text: eveLines.join('\n') });
+    const eveText = buildDiary(base.text, ageIdx, id, '', formatDyn(dyn1));
+    results.push({ name: name + ' · Вечір', text: eveText });
 
-    if (mode === 3) {
-      // Щоденник 3 — ранок наступного дня
-      const nightSel = getSelected('night-'+id);
-      const nightOther = getVal('night-other-'+id);
-      const nightText = nightSel.length ? nightSel[0][0].toUpperCase()+nightSel[0].slice(1)+'.' : (nightOther ? nightOther+'.' : '');
-      const dyn2 = getSelected('dyn2-'+id);
-      const dynMornText = dyn2.length ? 'Динаміка '+dyn2[0]+'.': '';
-      const vitMorn = ageIdx >= 0 ? buildVitals(id, ageIdx) : base.text.split('\n')[0];
-      const mornLines = base.text.split('\n');
-      mornLines[mornLines.findIndex(l => l.includes('Т -'))] = vitMorn;
-      // вставляємо після стану: спочатку ніч, потім динаміка
-      if (dynMornText) insertAfterStan(mornLines, dynMornText);
-      if (nightText) insertAfterStan(mornLines, nightText);
-      results.push({ name: name + ' · Ранок 2', text: mornLines.join('\n') });
-    }
+    const nightSel = getSelected('night-'+id);
+    const nightOther = getVal('night-other-'+id);
+    const nightText = nightSel.length ? nightSel[0][0].toUpperCase()+nightSel[0].slice(1)+'.' : (nightOther ? nightOther+'.' : '');
+    const dyn2 = getSelected('dyn2-'+id);
+    const mornText = buildDiary(base.text, ageIdx, id, nightText, formatDyn(dyn2));
+    results.push({ name: name + ' · Ранок', text: mornText });
   }
   showOutput(results);
 }
