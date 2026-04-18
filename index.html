@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Щоденник огляду</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --border: #2a2f3e;
+    --accent: #4a9eff;
+    --accent2: #00d4a0;
+    --accent3: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #f87171;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cloud-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .cloud-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 10px;
+    outline: none;
+    flex: 1;
+    min-width: 140px;
+  }
+  .cloud-input:focus { border-color: var(--accent); }
+
+  .cloud-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .cloud-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cloud-btn.save { border-color: var(--accent2); color: var(--accent2); }
+  .cloud-btn.load { border-color: var(--accent3); color: var(--accent3); }
+
+  .cloud-status { font-family: var(--mono); font-size: 10px; color: var(--muted); padding: 4px 0; }
+  .cloud-status.ok  { color: var(--accent2); }
+  .cloud-status.err { color: var(--danger); }
+
+  .patient-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .patient-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    background: #1e2333;
+  }
+  .patient-header:hover { background: #232840; }
+
+  .patient-title { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 500; }
+
+  .patient-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--muted);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 180px;
+    padding: 2px 4px;
+    outline: none;
+  }
+  .patient-name-input:focus { border-bottom-color: var(--accent); }
+
+  .chevron { color: var(--muted); font-size: 16px; transition: transform 0.2s; user-select: none; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .patient-body { padding: 14px; display: none; }
+  .patient-body.open { display: block; }
+
+  .section { margin-bottom: 14px; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .vitals-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .vital-field { display: flex; flex-direction: column; gap: 3px; }
+  .vital-label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+  .vital-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 5px 8px;
+    outline: none;
+    width: 100%;
+    text-align: center;
+  }
+  .vital-input:focus { border-color: var(--accent); }
+
+  .bp-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4px; }
+  .bp-sep { color: var(--muted); font-family: var(--mono); text-align: center; }
+
+  .age-gen-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+
+  .age-gen-btn {
+    background: transparent;
+    border: 1px solid var(--accent3);
+    border-radius: 4px;
+    color: var(--accent3);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .age-gen-btn:hover { background: var(--accent3); color: #000; }
+
+  .age-picker { display: none; flex-wrap: wrap; gap: 6px; margin-top: 6px; margin-bottom: 10px; }
+  .age-picker.open { display: flex; }
+
+  .age-opt {
+    background: var(--bg);
+    border: 1px solid var(--accent3);
+    border-radius: 4px;
+    color: var(--accent3);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .age-opt:hover { background: var(--accent3); color: #000; }
+
+  .options-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .opt {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    line-height: 1.4;
+  }
+  .opt:hover { border-color: var(--accent); color: var(--text); }
+  .opt.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .text-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    width: 100%;
+    margin-top: 6px;
+  }
+  .text-input:focus { border-color: var(--accent); }
+
+  .flacc-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .flacc-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  .score-input {
+    width: 56px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 4px 8px;
+    outline: none;
+    text-align: center;
+  }
+  .score-input:focus { border-color: var(--accent); }
+
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+  .localis-row { display: flex; flex-direction: column; gap: 6px; }
+
+  .generate-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  .generate-btn:hover { opacity: 0.85; }
+
+  .add-patient-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 12px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: all 0.15s;
+  }
+  .add-patient-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .generate-all-btn {
+    width: 100%;
+    background: var(--accent2);
+    border: none;
+    border-radius: 6px;
+    color: #000;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 12px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  .generate-all-btn:hover { opacity: 0.85; }
+
+  .output-section { margin-top: 16px; }
+
+  .output-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .output-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .output-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #1e2333;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .output-block-name { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .copy-btn.copied { border-color: var(--accent2); color: var(--accent2); }
+
+  .output-text {
+    padding: 12px;
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+
+  .remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .remove-btn:hover { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<h1>Щоденник огляду · Хірургія</h1>
+
+<div class="cloud-bar">
+  <input class="cloud-input" id="enc-password" type="password" placeholder="🔑 Пароль шифрування">
+  <button class="cloud-btn save" onclick="saveCloud()">☁ Зберегти</button>
+  <button class="cloud-btn load" onclick="loadCloud()">☁ Завантажити</button>
+  <button class="cloud-btn" onclick="exportSession()">↓ Експорт</button>
+  <button class="cloud-btn load" onclick="document.getElementById('import-input').click()">↑ Імпорт</button>
+  <input type="file" id="import-input" accept=".json" style="display:none" onchange="importSession(this)">
+  <span class="cloud-status" id="cloud-status"></span>
+</div>
+
+<div id="patients-container"></div>
+
+<button class="add-patient-btn" onclick="addPatient()">+ Додати пацієнта</button>
+<button class="generate-all-btn" onclick="generateAll()">Згенерувати всі щоденники</button>
+
+<div class="output-section" id="output-section" style="display:none">
+  <div class="output-label">Готові тексти</div>
+  <div id="output-container"></div>
+</div>
+
+<script>
+let patientCount = 0;
+
+// ── ВІКОВІ НОРМИ ──────────────────────────────────────────────────────────────
+const AGE_NORMS = [
+  { label: 'До 1 року',   hr:[100,160], rr:[30,40], bps:[70,90],   bpd:[40,60],  t:[36.4,37.2] },
+  { label: '1–3 роки',    hr:[100,140], rr:[25,30], bps:[90,100],  bpd:[50,60],  t:[36.4,37.2] },
+  { label: '4–7 років',   hr:[88,120],  rr:[20,25], bps:[90,110],  bpd:[60,70],  t:[36.3,37.0] },
+  { label: '8–12 років',  hr:[80,108],  rr:[18,22], bps:[100,120], bpd:[60,80],  t:[36.3,37.0] },
+  { label: '13–17 років', hr:[60,100],  rr:[16,20], bps:[110,130], bpd:[60,80],  t:[36.2,36.9] },
+];
+
+function randInRange(min, max) { return min + Math.floor(Math.random()*(max-min+1)); }
+function randMult(min, max, m) {
+  const lo = Math.ceil(min/m), hi = Math.floor(max/m);
+  return (lo + Math.floor(Math.random()*(hi-lo+1))) * m;
+}
+function randT(min, max) { return (min + Math.random()*(max-min)).toFixed(1); }
+
+function fillVitals(id, idx) {
+  const n = AGE_NORMS[idx];
+  document.getElementById('t-'+id).value    = randT(n.t[0], n.t[1]);
+  document.getElementById('hr-'+id).value   = randMult(n.hr[0], n.hr[1], 4);
+  document.getElementById('rr-'+id).value   = randInRange(n.rr[0], n.rr[1]);
+  document.getElementById('bps-'+id).value  = randMult(n.bps[0], n.bps[1], 10);
+  document.getElementById('bpd-'+id).value  = randMult(n.bpd[0], n.bpd[1], 10);
+  document.getElementById('spo2-'+id).value = randInRange(97, 99);
+  const ap = document.getElementById('age-picker-'+id); ap.classList.remove('open'); ap.dataset.lastAge = idx;
+}
+
+function toggleSpo2(id, checked) {
+  document.getElementById('spo2-'+id).style.opacity = checked ? '1' : '0.3';
+}
+
+function toggleAgePicker(id) {
+  document.getElementById('age-picker-'+id).classList.toggle('open');
+}
+
+// ── OPTIONS DATA ──────────────────────────────────────────────────────────────
+const STAN        = ['задовільний','середнього ступеня важкості','важкий','вкрай важкий'];
+const STAN_REASON = ['раннього п/о періоду','больового синдрому','інтоксикаційного синдрому','дихальної недостатності','кровотечі','диспептичного синдрому'];
+const TEMP        = ['не лихоманить','лихоманить субфебрильно','лихоманить фебрильно','лихоманить високо'];
+const SVIDOM      = ['ясна, дитина доступна контакту','пригнічена','медикаментозний сон','на огляд реагує плачем'];
+const SHKIRA      = ['чисті, блідо-рожеві','бліді'];
+const ZHYVIT_SYM  = ['симетричний, не роздутий','роздутий'];
+const ZHYVIT_M    = ["м'який",'напружений'];
+const ZHYVIT_BOL  = ['безболісний','болісний','болісний в ділянці п/о рани'];
+const PERYST      = ['вислуховується','млява'];
+const SELEZ       = ['не пальпується','пальпується'];
+const SECH        = ['вільне, безболісне, діурез достатній','через катетер, діурез достатній'];
+const VYPOR       = ['стул самостійний','не було','після клізми'];
+const ENTER       = ['ентерально годується, засвоює','не годується','по шлунковому зонду, засвоює'];
+const TERAPIA     = ['терапія за листом призначень','продовжує отримувати інфузійну терапію','продовжує отримувати антибактеріальну терапію','продовжує отримувати інфузійну та антибактеріальну терапію'];
+
+function makeOpts(cid, options, multi=false) {
+  return options.map((o,i) =>
+    '<span class="opt" data-container="'+cid+'" data-index="'+i+'" data-multi="'+multi+'" onclick="toggleOpt(this)">'+o+'</span>'
+  ).join('');
+}
+
+function toggleOpt(el) {
+  const multi = el.dataset.multi === 'true';
+  const cid = el.dataset.container;
+  if (!multi) document.querySelectorAll('[data-container="'+cid+'"]').forEach(e => e.classList.remove('selected'));
+  el.classList.toggle('selected');
+}
+
+function getSelected(cid) {
+  return [...document.querySelectorAll('[data-container="'+cid+'"].selected')].map(e => e.textContent);
+}
+
+function getVal(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+// ── ADD PATIENT ───────────────────────────────────────────────────────────────
+function addPatient(data) {
+  patientCount++;
+  const id = patientCount;
+  const div = document.createElement('div');
+  div.className = 'patient-card';
+  div.id = 'patient-'+id;
+
+  const ageBtns = AGE_NORMS.map((n,i) =>
+    '<span class="age-opt" onclick="fillVitals('+id+','+i+')">'+n.label+'</span>'
+  ).join('');
+
+  div.innerHTML =
+    '<div class="patient-header" onclick="toggleCard('+id+')">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<span class="patient-title">#'+id+'</span>'+
+        '<input class="patient-name-input" id="name-'+id+'" placeholder="ПІБ / ліжко" onclick="event.stopPropagation()" />'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<button class="remove-btn" onclick="event.stopPropagation();removePatient('+id+')">✕</button>'+
+        '<span class="chevron open" id="chev-'+id+'">▾</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="patient-body open" id="body-'+id+'">'+
+
+      '<div class="section"><div class="section-label">Огляд (необов\'язково)</div><div class="options-row">'+
+        '<span class="opt" data-container="ohliad-'+id+'" data-index="0" onclick="toggleOpt(this)">огляд лікуючого лікаря</span>'+
+        '<span class="opt" data-container="ohliad-'+id+'" data-index="1" onclick="toggleOpt(this)">огляд відповідального хірурга</span>'+
+      '</div></div>'+
+      '<div class="divider"></div>'+
+
+      '<div class="section">'+
+        '<div class="section-label">Вітальні показники</div>'+
+        '<div class="age-gen-row">'+
+          '<button class="age-gen-btn" onclick="event.stopPropagation();toggleAgePicker('+id+')">⚡ Норма за віком</button>'+
+          '<span style="font-size:11px;color:var(--muted)">або вводь вручну</span>'+
+        '</div>'+
+        '<div class="age-picker" id="age-picker-'+id+'">'+ageBtns+'</div>'+
+        '<div class="vitals-row">'+
+          '<div class="vital-field"><div class="vital-label">T °C</div><input class="vital-input" id="t-'+id+'" placeholder="36.8"></div>'+
+          '<div class="vital-field"><div class="vital-label">ЧСС /хв</div><input class="vital-input" id="hr-'+id+'" placeholder="88"></div>'+
+          '<div class="vital-field"><div class="vital-label">ЧД /хв</div><input class="vital-input" id="rr-'+id+'" placeholder="18"></div>'+
+        '</div>'+
+        '<div class="vitals-row" style="margin-top:8px">'+
+          '<div class="vital-field" style="grid-column:span 2"><div class="vital-label">АТ мм рт.ст.</div>'+
+            '<div class="bp-row"><input class="vital-input" id="bps-'+id+'" placeholder="110"><span class="bp-sep">/</span><input class="vital-input" id="bpd-'+id+'" placeholder="70"></div>'+
+          '</div>'+
+          '<div class="vital-field">'+
+            '<div class="vital-label" style="display:flex;align-items:center;gap:4px">'+
+              '<input type="checkbox" id="spo2-cb-'+id+'" style="cursor:pointer" onchange="toggleSpo2('+id+',this.checked)">'+
+              '<span>SpO2 %</span>'+
+            '</div>'+
+            '<input class="vital-input" id="spo2-'+id+'" placeholder="98" style="opacity:0.3">'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="divider"></div>'+
+
+      '<div class="section">'+
+        '<div class="section-label">Загальний стан</div>'+
+        '<div class="options-row">'+makeOpts('stan-'+id, STAN)+'</div>'+
+        '<div class="section-label" style="margin-top:8px">За рахунок (можна кілька)</div>'+
+        '<div class="options-row">'+makeOpts('reason-'+id, STAN_REASON, true)+'</div>'+
+        '<input class="text-input" id="reason-other-'+id+'" placeholder="інше...">'+
+      '</div>'+
+
+      '<div class="divider"></div>'+
+
+      '<div class="section">'+
+        '<div class="section-label">Скарги</div>'+
+        '<div class="options-row">'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="0" data-multi="false" onclick="toggleSkarga(this,'+id+')">не висловлює</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="1" data-multi="false" onclick="toggleSkarga(this,'+id+')">біль у п/о ділянці</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="5" data-multi="true" onclick="togSkMulti(this,'+id+')">біль в животі</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="2" data-multi="true" onclick="togSkMulti(this,'+id+')">підвищення температури</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="3" data-multi="true" onclick="togSkMulti(this,'+id+')">нудота</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="4" data-multi="true" onclick="togSkMulti(this,'+id+')">блювання</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="6" data-multi="true" onclick="togSkMulti(this,'+id+')">вздуття живота</span>'+
+        '</div>'+
+        '<div id="pain-row-'+id+'" style="display:none;margin-top:8px">'+
+          '<div class="options-row">'+
+            '<span class="opt" data-container="pain-scale-'+id+'" data-index="0" onclick="toggleOpt(this)">ВАШ</span>'+
+            '<span class="opt" data-container="pain-scale-'+id+'" data-index="1" onclick="toggleOpt(this)">FLACC</span>'+
+          '</div>'+
+          '<div class="flacc-row"><span class="flacc-label">Бал:</span><input class="score-input" id="pain-score-'+id+'" placeholder="4"></div>'+
+        '</div>'+
+        '<input class="text-input" id="skargy-other-'+id+'" placeholder="інше...">'+
+      '</div>'+
+
+      '<div class="divider"></div>'+
+
+      '<div class="section"><div class="section-label">Температура</div><div class="options-row">'+makeOpts('temp-'+id, TEMP)+'</div></div>'+
+      '<div class="section"><div class="section-label">Свідомість</div><div class="options-row">'+makeOpts('svidom-'+id, SVIDOM)+'</div></div>'+
+      '<div class="section"><div class="section-label">Шкірні покриви</div><div class="options-row">'+makeOpts('shkira-'+id, SHKIRA)+'</div></div>'+
+
+      '<div class="divider"></div>'+
+
+      '<div class="section">'+
+        '<div class="section-label">Живіт</div>'+
+        '<div class="options-row">'+makeOpts('zsym-'+id, ZHYVIT_SYM)+'</div>'+
+        '<div class="options-row" style="margin-top:6px">'+makeOpts('zm-'+id, ZHYVIT_M)+'</div>'+
+        '<div class="options-row" style="margin-top:6px">'+makeOpts('zbol-'+id, ZHYVIT_BOL)+'</div>'+
+        '<div class="options-row" style="margin-top:6px"><span style="font-size:12px;color:var(--muted);padding:4px 2px">Селезінка:</span>'+makeOpts('selez-'+id, SELEZ)+'</div>'+
+        '<div class="options-row" style="margin-top:6px"><span style="font-size:12px;color:var(--muted);padding:4px 2px">Перистальтика:</span>'+makeOpts('peryst-'+id, PERYST)+'</div>'+
+      '</div>'+
+
+      '<div class="divider"></div>'+
+
+      '<div class="section"><div class="section-label">Сечовипускання</div><div class="options-row">'+makeOpts('sech-'+id, SECH)+'</div></div>'+
+      '<div class="section"><div class="section-label">Випорожнення</div><div class="options-row">'+makeOpts('vypor-'+id, VYPOR)+'</div></div>'+
+      '<div class="section">'+
+        '<div class="section-label">Харчування</div>'+
+        '<div class="options-row">'+makeOpts('enter-'+id, ENTER)+'</div>'+
+        '<input class="text-input" id="zond-'+id+'" placeholder="по зонду — характер, обсяг...">'+
+      '</div>'+
+
+      '<div class="divider"></div>'+
+
+      '<div class="section">'+
+        '<div class="section-label">St. Localis</div>'+
+        '<div class="options-row">'+
+          '<span class="opt" data-container="localis-mode-'+id+'" onclick="setLocalisMode(this,'+id+',\'perviazka\')">Перев\'язка проведена</span>'+
+          '<span class="opt" data-container="localis-mode-'+id+'" onclick="setLocalisMode(this,'+id+',\'povyazka\')">Перев\'язка не проводилась</span>'+
+        '</div>'+
+        '<div id="localis-perviazka-'+id+'" style="display:none;margin-top:8px">'+
+          '<input class="text-input" id="rana-'+id+'" placeholder="стан рани (порожньо = чиста, без ознак запалення)">'+
+        '</div>'+
+        '<div id="localis-povyazka-'+id+'" style="display:none;margin-top:8px">'+
+          '<div class="options-row">'+
+            '<span class="opt" data-container="povyazka-'+id+'" onclick="toggleOpt(this)">суха, чиста</span>'+
+            '<span class="opt" data-container="povyazka-'+id+'" onclick="toggleOpt(this)">просякнута</span>'+
+          '</div>'+
+          '<input class="text-input" id="povyazka-other-'+id+'" placeholder="чим просякнута...">'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="section">'+
+        '<div class="section-label">Дренажі</div>'+
+        '<div class="options-row">'+
+          '<span class="opt" data-container="drain-mode-'+id+'" onclick="setDrainMode(this,'+id+',\'none\')">відсутні</span>'+
+          '<span class="opt" data-container="drain-mode-'+id+'" onclick="setDrainMode(this,'+id+',\'present\')">наявні</span>'+
+        '</div>'+
+        '<div id="drain-detail-'+id+'" style="display:none;margin-top:8px">'+
+          '<input class="text-input" id="drain-loc-'+id+'" placeholder="розташування...">'+
+          '<input class="text-input" id="drain-char-'+id+'" placeholder="характер та обсяг відокремлюваного..." style="margin-top:6px">'+
+          '<div class="options-row" style="margin-top:6px">'+
+            '<span class="opt" data-container="drain-func-'+id+'" onclick="toggleOpt(this)">функціонує</span>'+
+            '<span class="opt" data-container="drain-func-'+id+'" onclick="toggleOpt(this)">видалено</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="section"><div class="section-label">Терапія</div><div class="options-row">'+makeOpts('terapia-'+id, TERAPIA)+'</div></div>'+
+
+
+      '<div class="section" style="margin-top:8px">'+
+        '<div class="section-label">Кількість щоденників</div>'+
+        '<div class="options-row">'+
+          '<span class="opt" data-container="mode-'+id+'" data-index="0" onclick="setMode(this,'+id+',1)">1</span>'+
+          '<span class="opt" data-container="mode-'+id+'" data-index="1" onclick="setMode(this,'+id+',2)">2 (ранок + вечір)</span>'+
+          '<span class="opt" data-container="mode-'+id+'" data-index="2" onclick="setMode(this,'+id+',3)">3 (ранок + вечір + ранок)</span>'+
+        '</div>'+
+        '<div id="dyn-eve-'+id+'" style="display:none;margin-top:8px">'+
+          '<div class="section-label">Вечір · Динаміка</div>'+
+          '<div class="options-row">'+
+            '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">позитивна</span>'+
+            '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">без динаміки</span>'+
+            '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">негативна</span>'+
+          '</div>'+
+        '</div>'+
+        '<div id="dyn-morn-'+id+'" style="display:none;margin-top:8px">'+
+          '<div class="section-label">Ранок 2 · Ніч</div>'+
+          '<div class="options-row">'+
+            '<span class="opt" data-container="night-'+id+'" onclick="toggleOpt(this)">ніч провела спокійно</span>'+
+            '<span class="opt" data-container="night-'+id+'" onclick="toggleOpt(this)">ніч провела неспокійно</span>'+
+          '</div>'+
+          '<input class="text-input" id="night-other-'+id+'" placeholder="інше про ніч...">'+
+          '<div class="section-label" style="margin-top:8px">Ранок 2 · Динаміка</div>'+
+          '<div class="options-row">'+
+            '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">позитивна</span>'+
+            '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">без динаміки</span>'+
+            '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">негативна</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      '<button class="generate-btn" onclick="generateOne('+id+')">Згенерувати щоденник</button>'+
+    '</div>';
+
+  document.getElementById('patients-container').appendChild(div);
+  if (data) restorePatient(id, data);
+}
+
+// ── UI HANDLERS ───────────────────────────────────────────────────────────────
+function toggleCard(id) {
+  document.getElementById('body-'+id).classList.toggle('open');
+  document.getElementById('chev-'+id).classList.toggle('open');
+}
+
+function removePatient(id) { document.getElementById('patient-'+id).remove(); }
+
+function togSkMulti(el, id) {
+  // знімаємо "не висловлює" якщо вибрано щось інше
+  document.querySelectorAll('[data-container="skargy-'+id+'"][data-index="0"]').forEach(e => e.classList.remove('selected'));
+  el.classList.toggle('selected');
+}
+
+function toggleSkarga(el, id) {
+  const idx = el.dataset.index;
+  const painRow = document.getElementById('pain-row-'+id);
+  if (idx === '0') {
+    document.querySelectorAll('[data-container="skargy-'+id+'"]').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    painRow.style.display = 'none';
+  } else if (idx === '1') {
+    document.querySelectorAll('[data-container="skargy-'+id+'"][data-index="0"]').forEach(e => e.classList.remove('selected'));
+    el.classList.toggle('selected');
+    painRow.style.display = el.classList.contains('selected') ? 'block' : 'none';
+  } else {
+    document.querySelectorAll('[data-container="skargy-'+id+'"][data-index="0"]').forEach(e => e.classList.remove('selected'));
+    el.classList.toggle('selected');
+  }
+}
+
+function setLocalisMode(el, id, mode) {
+  document.querySelectorAll('[data-container="localis-mode-'+id+'"]').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('localis-perviazka-'+id).style.display = mode==='perviazka' ? 'block' : 'none';
+  document.getElementById('localis-povyazka-'+id).style.display  = mode==='povyazka'  ? 'block' : 'none';
+}
+
+function setDrainMode(el, id, mode) {
+  document.querySelectorAll('[data-container="drain-mode-'+id+'"]').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('drain-detail-'+id).style.display = mode==='present' ? 'block' : 'none';
+}
+
+// ── SERIALIZE / RESTORE ───────────────────────────────────────────────────────
+function serializePatient(id) {
+  const textFields = ['name','t','hr','rr','bps','bpd','spo2','reason-other','skargy-other','pain-score','zond','rana','povyazka-other','drain-loc','drain-char','night-other'];
+  const d = {};
+  textFields.forEach(f => { d[f] = getVal(f+'-'+id); });
+  const spo2cbEl = document.getElementById('spo2-cb-'+id); d['spo2-cb'] = spo2cbEl ? spo2cbEl.checked : false;
+
+  const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','skargy','ohliad','mode','dyn1','dyn2','night'];
+  d.sel = {};
+  containers.forEach(c => {
+    d.sel[c] = [...document.querySelectorAll('[data-container="'+c+'-'+id+'"].selected')].map(e => e.dataset.index);
+  });
+
+  const lm = [...document.querySelectorAll('[data-container="localis-mode-'+id+'"].selected')];
+  d.localisMode = lm.length ? (lm[0].getAttribute('onclick').includes('perviazka') ? 'perviazka' : 'povyazka') : '';
+
+  const dm = [...document.querySelectorAll('[data-container="drain-mode-'+id+'"].selected')];
+  d.drainMode = dm.length ? (dm[0].getAttribute('onclick').includes('present') ? 'present' : 'none') : '';
+
+  return d;
+}
+
+function restorePatient(id, d) {
+  const textFields = ['name','t','hr','rr','bps','bpd','spo2','reason-other','skargy-other','pain-score','zond','rana','povyazka-other','drain-loc','drain-char','night-other'];
+  textFields.forEach(f => { const el = document.getElementById(f+'-'+id); if (el && d[f]) el.value = d[f]; });
+
+  if (d.sel) {
+    const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','ohliad','mode','dyn1','dyn2','night'];
+    containers.forEach(c => {
+      (d.sel[c]||[]).forEach(idx => {
+        const el = document.querySelector('[data-container="'+c+'-'+id+'"][data-index="'+idx+'"]');
+        if (el) el.classList.add('selected');
+      });
+    });
+    (d.sel['skargy']||[]).forEach(idx => {
+      const el = document.querySelector('[data-container="skargy-'+id+'"][data-index="'+idx+'"]');
+      if (el) { el.classList.add('selected'); if (idx==='1') document.getElementById('pain-row-'+id).style.display='block'; }
+    });
+  }
+
+  if (d.localisMode) {
+    const el = document.querySelector('[data-container="localis-mode-'+id+'"][onclick*="'+d.localisMode+'"]');
+    if (el) { el.classList.add('selected'); setLocalisMode(el, id, d.localisMode); }
+  }
+  if (d.drainMode) {
+    const el = document.querySelector('[data-container="drain-mode-'+id+'"][onclick*="'+d.drainMode+'"]');
+    if (el) { el.classList.add('selected'); setDrainMode(el, id, d.drainMode); }
+  }
+}
+
+// ── ШИФРУВАННЯ AES-GCM ────────────────────────────────────────────────────────
+async function getKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encrypt(text, password) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await getKey(password, salt);
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  // salt(16) + iv(12) + ciphertext → base64
+  const buf  = new Uint8Array(16 + 12 + ct.byteLength);
+  buf.set(salt, 0); buf.set(iv, 16); buf.set(new Uint8Array(ct), 28);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function decrypt(b64, password) {
+  const buf  = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const salt = buf.slice(0, 16);
+  const iv   = buf.slice(16, 28);
+  const ct   = buf.slice(28);
+  const key  = await getKey(password, salt);
+  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(pt);
+}
+
+// ── JSONBIN CLOUD ─────────────────────────────────────────────────────────────
+const JSONBIN_KEY = '$2a$10$o3.YLRU8tOLaE3EUkQiRHeJYJIm.vmgFoMxJCJFWzxZ6vlCBW9vLK';
+const BIN_ID_KEY = 'щоденник_bin_id';
+
+function setStatus(msg, type) {
+  const el = document.getElementById('cloud-status');
+  el.textContent = msg;
+  el.className = 'cloud-status' + (type ? ' '+type : '');
+  if (type==='ok') setTimeout(() => { el.textContent=''; el.className='cloud-status'; }, 3000);
+}
+
+async function saveCloud() {
+  const password = document.getElementById('enc-password').value.trim();
+  if (!password) { setStatus('Введи пароль шифрування', 'err'); return; }
+
+  const patients = [];
+  document.querySelectorAll('.patient-card').forEach(card => {
+    patients.push(serializePatient(card.id.replace('patient-','')));
+  });
+  const payload = JSON.stringify({ patients, savedAt: new Date().toISOString() });
+  setStatus('Шифрування та збереження…');
+
+  try {
+    const encrypted = await encrypt(payload, password);
+    const binId = localStorage.getItem(BIN_ID_KEY);
+    let resp;
+    if (binId) {
+      resp = await fetch('https://api.jsonbin.io/v3/b/' + binId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+        body: JSON.stringify({ d: encrypted })
+      });
+    } else {
+      resp = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name': 'shchodennyk', 'X-Bin-Private': 'true' },
+        body: JSON.stringify({ d: encrypted })
+      });
+      const data = await resp.json();
+      localStorage.setItem(BIN_ID_KEY, data.metadata.id);
+    }
+    if (resp.ok) { setStatus('✓ Збережено (зашифровано)', 'ok'); }
+    else { setStatus('Помилка збереження', 'err'); }
+  } catch(e) { setStatus('Помилка: ' + e.message, 'err'); }
+}
+
+async function loadCloud() {
+  const password = document.getElementById('enc-password').value.trim();
+  if (!password) { setStatus('Введи пароль шифрування', 'err'); return; }
+
+  const binId = localStorage.getItem(BIN_ID_KEY);
+  if (!binId) { setStatus('Спочатку збережи дані', 'err'); return; }
+  setStatus('Завантаження…');
+  try {
+    const resp = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    if (!resp.ok) { setStatus('Помилка завантаження', 'err'); return; }
+    const json = await resp.json();
+    let data;
+    try {
+      const decrypted = await decrypt(json.record.d, password);
+      data = JSON.parse(decrypted);
+    } catch(e) {
+      setStatus('Невірний пароль', 'err'); return;
+    }
+    document.getElementById('patients-container').innerHTML = '';
+    patientCount = 0;
+    data.patients.forEach(p => addPatient(p));
+    setStatus('✓ Завантажено (' + new Date(data.savedAt).toLocaleString('uk-UA') + ')', 'ok');
+  } catch(e) { setStatus('Помилка з\'єднання', 'err'); }
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+function exportSession() {
+  const patients = [];
+  document.querySelectorAll('.patient-card').forEach(card => {
+    patients.push(serializePatient(card.id.replace('patient-','')));
+  });
+  const payload = JSON.stringify({ patients, savedAt: new Date().toISOString() }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'obhid_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus('✓ Файл збережено', 'ok');
+}
+
+function importSession(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      document.getElementById('patients-container').innerHTML = '';
+      patientCount = 0;
+      data.patients.forEach(p => addPatient(p));
+      setStatus('✓ Завантажено (' + new Date(data.savedAt).toLocaleString('uk-UA') + ')', 'ok');
+    } catch(err) { setStatus('Помилка файлу', 'err'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ── BUILD TEXT ────────────────────────────────────────────────────────────────
+function buildText(id) {
+  const name = getVal('name-'+id) || 'Пацієнт #'+id;
+  const t=getVal('t-'+id), hr=getVal('hr-'+id), rr=getVal('rr-'+id);
+  const bps=getVal('bps-'+id), bpd=getVal('bpd-'+id), spo2=getVal('spo2-'+id);
+
+  const spo2cb = document.getElementById('spo2-cb-'+id);
+  const useSpo2 = spo2cb && spo2cb.checked;
+  let vitals=[];
+  if(t) vitals.push('Т - '+t+'°С');
+  if(hr) vitals.push('ЧСС - '+hr+'/хв');
+  if(rr) vitals.push('ЧД - '+rr+'/хв');
+  if(bps&&bpd) vitals.push('АТ - '+bps+'/'+bpd+' мм рт.ст.');
+  if(useSpo2&&spo2) vitals.push('SpO2 - '+spo2+'%');
+
+  const stanSel=getSelected('stan-'+id);
+  const reasonSel=getSelected('reason-'+id);
+  const reasonOther=getVal('reason-other-'+id);
+  const allReasons=[...reasonSel,...(reasonOther?[reasonOther]:[])];
+  let stanText='';
+  if(stanSel.length){
+    stanText='Стан '+stanSel[0];
+    if(allReasons.length) stanText+=' за рахунок '+allReasons.join(', ');
+    stanText+='.';
+  }
+
+  const skargySel=[...document.querySelectorAll('[data-container="skargy-'+id+'"].selected')];
+  const skargyOther=getVal('skargy-other-'+id);
+  let skargyText='';
+  if(skargySel.length||skargyOther){
+    const hasNone=skargySel.find(e=>e.dataset.index==='0');
+    const hasPain=skargySel.find(e=>e.dataset.index==='1');
+    let parts=[];
+    if(hasNone){ parts.push('не висловлює'); }
+    else {
+      if(hasPain){
+        const scale=getSelected('pain-scale-'+id), score=getVal('pain-score-'+id);
+        let ps='біль у п/о ділянці';
+        if(scale.length&&score) ps+=' ('+scale[0]+' '+score+'б)';
+        parts.push(ps);
+      }
+      skargySel.filter(e=>e.dataset.index!=='0'&&e.dataset.index!=='1').forEach(e=>parts.push(e.textContent));
+      if(skargyOther) parts.push(skargyOther);
+    }
+    skargyText='Скарги на момент огляду: '+parts.join(', ')+'.';
+  }
+
+  const tempSel=getSelected('temp-'+id);
+  const tempText=tempSel.length?(tempSel[0]==='не лихоманить'?'Пацієнт не лихоманить.':tempSel[0][0].toUpperCase()+tempSel[0].slice(1)+'.'):'';
+
+  const svidomSel=getSelected('svidom-'+id);
+  const svidomText=svidomSel.length?'Свідомість '+svidomSel[0]+'.':'';
+
+  const shkiraSel=getSelected('shkira-'+id);
+  let shkiraText='';
+  if(shkiraSel.length) shkiraText='Шкірні покриви та видимі слизові '+shkiraSel[0]+'. Дихання везикулярне, перкуторно ясний легеневий звук. Тони серця ясні, ритмічні. Гемодинаміка стабільна.';
+
+  const zsym=getSelected('zsym-'+id), zm=getSelected('zm-'+id), zbol=getSelected('zbol-'+id);
+  const selez=getSelected('selez-'+id), peryst=getSelected('peryst-'+id);
+  const zhParts=[...zsym,...zm,...zbol];
+  let zhyvitText='';
+  if(zhParts.length) zhyvitText='Живіт '+zhParts.join(', ')+'. Печінка не збільшена, селезінка '+(selez.length?selez[0]:'не пальпується')+'. Перистальтика '+(peryst.length?peryst[0]:'вислуховується')+'.';
+
+  const sechSel=getSelected('sech-'+id);
+  const sechText=sechSel.length?'Сечовипускання '+sechSel[0]+'.':'';
+
+  const vyporSel=getSelected('vypor-'+id);
+  let vyporText='';
+  if(vyporSel.length){
+    if(vyporSel[0]==='стул самостійний') vyporText='Випорожнення: стул самостійний.';
+    else if(vyporSel[0]==='не було') vyporText='Випорожнення на момент огляду не було.';
+    else vyporText='Випорожнення після клізми.';
+  }
+
+  const enterSel=getSelected('enter-'+id), zond=getVal('zond-'+id);
+  let enterText='';
+  if(enterSel.length){
+    if(enterSel[0].startsWith('по шлунковому зонду')) {
+      enterText='По шлунковому зонду: '+(zond||'—')+', засвоює.';
+    } else {
+      enterText=enterSel[0][0].toUpperCase()+enterSel[0].slice(1)+'.';
+    }
+  }
+
+  const lm=[...document.querySelectorAll('[data-container="localis-mode-'+id+'"].selected')];
+  let localisText='';
+  if(lm.length){
+    const mode=lm[0].getAttribute('onclick').includes('perviazka')?'perviazka':'povyazka';
+    if(mode==='perviazka'){
+      const rv=getVal('rana-'+id)||'чиста, без ознак запалення';
+      localisText="St. Localis: п/о рана "+rv+". Проведено перев'язку.";
+    } else {
+      const ps=getSelected('povyazka-'+id), po=getVal('povyazka-other-'+id);
+      let pd=ps.length?ps[0]:'суха, чиста';
+      if(pd==='просякнута'&&po) pd+=' '+po;
+      localisText="St. Localis: пов'язка "+pd+'.';
+    }
+  }
+
+  const dm=[...document.querySelectorAll('[data-container="drain-mode-'+id+'"].selected')];
+  let drainText='';
+  if(dm.length){
+    if(!dm[0].getAttribute('onclick').includes('present')){
+      drainText='';
+    } else {
+      const loc=getVal('drain-loc-'+id), ch=getVal('drain-char-'+id), fn=getSelected('drain-func-'+id);
+      drainText='Дренаж '+(loc?'('+loc+') ':'')+'— '+(ch||'—')+(fn.length?', '+fn[0]:'')+'.';
+    }
+  }
+
+  const pvkText='ПВК функціонує, без ознак запалення.';
+
+  const terSel=getSelected('terapia-'+id);
+  const terText=terSel.length?terSel[0][0].toUpperCase()+terSel[0].slice(1)+'.':'';
+
+  const ohliadSel=getSelected('ohliad-'+id);
+  const ohliadText=ohliadSel.length?ohliadSel.map(o=>o[0].toUpperCase()+o.slice(1)+'.').join(' '):'';
+
+  // Об'єднуємо харчування + сеча + випорожнення в один рядок
+  const funcParts=[];
+  if(enterText) funcParts.push(enterText);
+  if(sechText) funcParts.push(sechText);
+  if(vyporText) funcParts.push(vyporText);
+  const funcLine=funcParts.join(' ');
+
+  const parts=[
+    ohliadText,
+    vitals.join(', ')+(vitals.length?'.':''),
+    stanText, skargyText, tempText, svidomText, shkiraText,
+    zhyvitText, funcLine,
+    localisText, drainText, pvkText, terText,
+  ].filter(Boolean);
+
+  return { name, text: parts.join('\n') };
+}
+
+function setMode(el, id, mode) {
+  document.querySelectorAll('[data-container="mode-'+id+'"]').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('dyn-eve-'+id).style.display  = mode >= 2 ? 'block' : 'none';
+  document.getElementById('dyn-morn-'+id).style.display = mode >= 3 ? 'block' : 'none';
+}
+
+function getMode(id) {
+  const sel = [...document.querySelectorAll('[data-container="mode-'+id+'"].selected')];
+  if (!sel.length) return 1;
+  return parseInt(sel[0].dataset.index) + 1;
+}
+
+function buildVitals(id, ageIdx) {
+  // генеруємо нові вітальні для додаткового щоденника
+  const n = AGE_NORMS[ageIdx];
+  const spo2cb = document.getElementById('spo2-cb-'+id);
+  const useSpo2 = spo2cb && spo2cb.checked;
+  let v = [];
+  const t = randT(n.t[0], n.t[1]);
+  const hr = randMult(n.hr[0], n.hr[1], 4);
+  const rr = randInRange(n.rr[0], n.rr[1]);
+  const bps = randMult(n.bps[0], n.bps[1], 10);
+  const bpd = randMult(n.bpd[0], n.bpd[1], 10);
+  const spo2 = randInRange(97, 99);
+  v.push('Т - '+t+'°С');
+  v.push('ЧСС - '+hr+'/хв');
+  v.push('ЧД - '+rr+'/хв');
+  v.push('АТ - '+bps+'/'+bpd+' мм рт.ст.');
+  if (useSpo2) v.push('SpO2 - '+spo2+'%');
+  return v.join(', ')+'.';
+}
+
+function getAgeIdx(id) {
+  // знаходимо обраний вік з age-picker
+  const picker = document.getElementById('age-picker-'+id);
+  if (!picker) return -1;
+  // останній натиснутий — зберігаємо в data атрибуті
+  return parseInt(picker.dataset.lastAge ?? '-1');
+}
+
+function insertAfterStan(lines, text) {
+  // вставляємо після рядка що містить "Стан"
+  const idx = lines.findIndex(l => l.startsWith('Стан '));
+  if (idx >= 0) { lines.splice(idx + 1, 0, text); }
+  else { lines.splice(1, 0, text); }
+}
+
+function generateOne(id) {
+  const mode = getMode(id);
+  const results = [];
+  const base = buildText(id);
+  const name = base.name;
+
+  if (mode === 1) {
+    results.push({ name, text: base.text });
+  } else {
+    // Щоденник 1 — ранок
+    results.push({ name: name + ' · Ранок', text: base.text });
+
+    // Щоденник 2 — вечір
+    const dyn1 = getSelected('dyn1-'+id);
+    const ageIdx = getAgeIdx(id);
+    const vitEve = ageIdx >= 0 ? buildVitals(id, ageIdx) : base.text.split('\n')[0];
+    const dynEveText = dyn1.length ? 'Динаміка '+dyn1[0]+'.': '';
+    const eveLines = base.text.split('\n');
+    eveLines[eveLines.findIndex(l => l.includes('Т -'))] = vitEve;
+    if (dynEveText) insertAfterStan(eveLines, dynEveText);
+    results.push({ name: name + ' · Вечір', text: eveLines.join('\n') });
+
+    if (mode === 3) {
+      // Щоденник 3 — ранок наступного дня
+      const nightSel = getSelected('night-'+id);
+      const nightOther = getVal('night-other-'+id);
+      const nightText = nightSel.length ? nightSel[0][0].toUpperCase()+nightSel[0].slice(1)+'.' : (nightOther ? nightOther+'.' : '');
+      const dyn2 = getSelected('dyn2-'+id);
+      const dynMornText = dyn2.length ? 'Динаміка '+dyn2[0]+'.': '';
+      const vitMorn = ageIdx >= 0 ? buildVitals(id, ageIdx) : base.text.split('\n')[0];
+      const mornLines = base.text.split('\n');
+      mornLines[mornLines.findIndex(l => l.includes('Т -'))] = vitMorn;
+      // вставляємо після стану: спочатку ніч, потім динаміка
+      if (dynMornText) insertAfterStan(mornLines, dynMornText);
+      if (nightText) insertAfterStan(mornLines, nightText);
+      results.push({ name: name + ' · Ранок 2', text: mornLines.join('\n') });
+    }
+  }
+  showOutput(results);
+}
+
+function generateAll() {
+  const results=[];
+  document.querySelectorAll('.patient-card').forEach(card => {
+    results.push(buildText(card.id.replace('patient-','')));
+  });
+  showOutput(results);
+}
+
+function showOutput(results) {
+  const section=document.getElementById('output-section');
+  const container=document.getElementById('output-container');
+  container.innerHTML='';
+  results.forEach(function(r) {
+    const block=document.createElement('div');
+    block.className='output-block';
+    const safeText=r.text.replace(/\\/g,'\\\\').replace(/`/g,'\\`');
+    block.innerHTML=
+      '<div class="output-block-header">'+
+        '<span class="output-block-name">'+r.name+'</span>'+
+        '<button class="copy-btn" onclick="copyText(this,`'+safeText+'`)">Копіювати</button>'+
+      '</div>'+
+      '<div class="output-text">'+r.text+'</div>';
+    container.appendChild(block);
+  });
+  section.style.display='block';
+  section.scrollIntoView({behavior:'smooth'});
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent='✓ Скопійовано';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Копіювати'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+addPatient();
+</script>
+</body>
+</html>
