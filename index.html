@@ -477,6 +477,9 @@ function addPatient(data) {
       '<div style="display:flex;align-items:center;gap:10px">'+
         '<span class="patient-title">#'+id+'</span>'+
         '<input class="patient-name-input" id="name-'+id+'" placeholder="ПІБ / ліжко" onclick="event.stopPropagation()" />'+
+        '<label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;margin-left:8px" onclick="event.stopPropagation()">'+
+          '<input type="checkbox" id="adult-'+id+'" style="cursor:pointer"> дорослий'+
+        '</label>'+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:8px">'+
         '<button class="remove-btn" onclick="event.stopPropagation();removePatient('+id+')">✕</button>'+
@@ -605,11 +608,11 @@ function addPatient(data) {
         '</div>'+
         '<div id="drain-detail-'+id+'" style="display:none;margin-top:8px">'+
           '<input class="text-input" id="drain-loc-'+id+'" placeholder="розташування...">'+
-          '<input class="text-input" id="drain-char-'+id+'" placeholder="характер та обсяг відокремлюваного..." style="margin-top:6px">'+
           '<div class="options-row" style="margin-top:6px">'+
             '<span class="opt" data-container="drain-func-'+id+'" onclick="toggleOpt(this)">функціонує</span>'+
             '<span class="opt" data-container="drain-func-'+id+'" onclick="toggleOpt(this)">видалено</span>'+
           '</div>'+
+          '<input class="text-input" id="drain-char-'+id+'" placeholder="характер та обсяг відокремлюваного..." style="margin-top:6px">'+
         '</div>'+
       '</div>'+
 
@@ -627,7 +630,6 @@ function addPatient(data) {
           '<div class="section-label">Вечір · Динаміка</div>'+
           '<div class="options-row">'+
             '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">позитивна</span>'+
-            '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">без динаміки</span>'+
             '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">негативна</span>'+
           '</div>'+
         '</div>'+
@@ -641,7 +643,6 @@ function addPatient(data) {
           '<div class="section-label" style="margin-top:8px">Ранок 2 · Динаміка</div>'+
           '<div class="options-row">'+
             '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">позитивна</span>'+
-            '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">без динаміки</span>'+
             '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">негативна</span>'+
           '</div>'+
         '</div>'+
@@ -704,6 +705,7 @@ function serializePatient(id) {
   const d = {};
   textFields.forEach(f => { d[f] = getVal(f+'-'+id); });
   const spo2cbEl = document.getElementById('spo2-cb-'+id); d['spo2-cb'] = spo2cbEl ? spo2cbEl.checked : false;
+  const adultEl = document.getElementById('adult-'+id); d['adult'] = adultEl ? adultEl.checked : false;
 
   const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','skargy','ohliad','mode','dyn1','dyn2','night'];
   d.sel = {};
@@ -892,6 +894,10 @@ function importSession(input) {
 // ── BUILD TEXT ────────────────────────────────────────────────────────────────
 function buildText(id) {
   const name = getVal('name-'+id) || 'Пацієнт #'+id;
+  const adultCb = document.getElementById('adult-'+id);
+  const isAdult = adultCb && adultCb.checked;
+  const subj = isAdult ? 'пацієнт' : 'дитина';
+  const subjCap = isAdult ? 'Пацієнт' : 'Дитина';
   const t=getVal('t-'+id), hr=getVal('hr-'+id), rr=getVal('rr-'+id);
   const bps=getVal('bps-'+id), bpd=getVal('bpd-'+id), spo2=getVal('spo2-'+id);
 
@@ -940,7 +946,8 @@ function buildText(id) {
   const tempText=tempSel.length?(tempSel[0]==='не лихоманить'?'Пацієнт не лихоманить.':tempSel[0][0].toUpperCase()+tempSel[0].slice(1)+'.'):'';
 
   const svidomSel=getSelected('svidom-'+id);
-  const svidomText=svidomSel.length?'Свідомість '+svidomSel[0]+'.':'';
+  const svidomRaw=svidomSel.length?svidomSel[0].replace('дитина',subj):'';
+  const svidomText=svidomRaw?'Свідомість '+svidomRaw+'.':'';
 
   const shkiraSel=getSelected('shkira-'+id);
   let shkiraText='';
@@ -995,7 +1002,7 @@ function buildText(id) {
       drainText='';
     } else {
       const loc=getVal('drain-loc-'+id), ch=getVal('drain-char-'+id), fn=getSelected('drain-func-'+id);
-      drainText='Дренаж '+(loc?'('+loc+') ':'')+'— '+(ch||'—')+(fn.length?', '+fn[0]:'')+'.';
+      drainText='Дренаж '+(loc?'('+loc+') ':'')+(fn.length?fn[0]+', ':'')+(ch||'—')+'.';
     }
   }
 
@@ -1029,7 +1036,7 @@ function setMode(el, id, mode) {
   document.querySelectorAll('[data-container="mode-'+id+'"]').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
   document.getElementById('dyn-eve-'+id).style.display  = mode >= 3 ? 'block' : 'none';
-  document.getElementById('dyn-morn-'+id).style.display = mode >= 3 ? 'block' : 'none';
+  document.getElementById('dyn-morn-'+id).style.display = mode >= 2 ? 'block' : 'none';
 }
 
 function getMode(id) {
