@@ -368,8 +368,11 @@
 <h1>Щоденник огляду · Хірургія</h1>
 
 <div class="cloud-bar">
-  <button class="cloud-btn save" onclick="exportSession()">↓ Експорт JSON</button>
-  <button class="cloud-btn load" onclick="document.getElementById('import-input').click()">↑ Імпорт JSON</button>
+  <input class="cloud-input" id="enc-password" type="password" placeholder="🔑 Пароль шифрування">
+  <button class="cloud-btn save" onclick="saveCloud()">☁ Зберегти</button>
+  <button class="cloud-btn load" onclick="loadCloud()">☁ Завантажити</button>
+  <button class="cloud-btn" onclick="exportSession()">↓ Експорт</button>
+  <button class="cloud-btn load" onclick="document.getElementById('import-input').click()">↑ Імпорт</button>
   <input type="file" id="import-input" accept=".json" style="display:none" onchange="importSession(this)">
   <span class="cloud-status" id="cloud-status"></span>
 </div>
@@ -420,18 +423,18 @@ function toggleAgePicker(id) {
 
 // ── OPTIONS DATA ──────────────────────────────────────────────────────────────
 const STAN        = ['задовільний','середнього ступеня важкості','важкий','вкрай важкий'];
-const STAN_REASON = ['раннього п/о періоду','інтоксикаційного синдрому','дихальної недостатності','кровотечі','ускладнень операції'];
-const TEMP        = ['не лихоманить','субфебрильна лихоманка','лихоманить фебрильно','лихоманить високо'];
-const SVIDOM      = ['ясна, доступна продуктивному контакту','пригнічена','медикаментозний сон'];
+const STAN_REASON = ['раннього п/о періоду','больового синдрому','інтоксикаційного синдрому','дихальної недостатності','кровотечі','диспептичного синдрому'];
+const TEMP        = ['не лихоманить','лихоманить субфебрильно','лихоманить фебрильно','лихоманить високо'];
+const SVIDOM      = ['ясна, дитина доступна контакту','пригнічена','медикаментозний сон','на огляд реагує плачем'];
 const SHKIRA      = ['чисті, блідо-рожеві','бліді'];
 const ZHYVIT_SYM  = ['симетричний, не роздутий','роздутий'];
 const ZHYVIT_M    = ["м'який",'напружений'];
-const ZHYVIT_BOL  = ['безболісний','болісний'];
+const ZHYVIT_BOL  = ['безболісний','болісний','болісний в ділянці п/о рани'];
 const PERYST      = ['вислуховується','млява'];
 const SELEZ       = ['не пальпується','пальпується'];
 const SECH        = ['вільне, безболісне, діурез достатній','через катетер, діурез достатній'];
 const VYPOR       = ['стул самостійний','не було','після клізми'];
-const ENTER       = ['ентерально годується','не годується','по шлунковому зонду'];
+const ENTER       = ['ентерально годується, засвоює','не годується','по шлунковому зонду, засвоює'];
 const TERAPIA     = ['терапія за листом призначень','продовжує отримувати інфузійну терапію','продовжує отримувати антибактеріальну терапію','продовжує отримувати інфузійну та антибактеріальну терапію'];
 
 function makeOpts(cid, options, multi=false) {
@@ -478,6 +481,12 @@ function addPatient(data) {
     '</div>'+
     '<div class="patient-body open" id="body-'+id+'">'+
 
+      '<div class="section"><div class="section-label">Огляд (необов\'язково)</div><div class="options-row">'+
+        '<span class="opt" data-container="ohliad-'+id+'" data-index="0" onclick="toggleOpt(this)">огляд лікуючого лікаря</span>'+
+        '<span class="opt" data-container="ohliad-'+id+'" data-index="1" onclick="toggleOpt(this)">огляд відповідального хірурга</span>'+
+      '</div></div>'+
+      '<div class="divider"></div>'+
+
       '<div class="section">'+
         '<div class="section-label">Вітальні показники</div>'+
         '<div class="age-gen-row">'+
@@ -515,9 +524,11 @@ function addPatient(data) {
         '<div class="options-row">'+
           '<span class="opt" data-container="skargy-'+id+'" data-index="0" data-multi="false" onclick="toggleSkarga(this,'+id+')">не висловлює</span>'+
           '<span class="opt" data-container="skargy-'+id+'" data-index="1" data-multi="false" onclick="toggleSkarga(this,'+id+')">біль у п/о ділянці</span>'+
-          '<span class="opt" data-container="skargy-'+id+'" data-index="2" data-multi="true" onclick="toggleOpt(this)">підвищення температури</span>'+
-          '<span class="opt" data-container="skargy-'+id+'" data-index="3" data-multi="true" onclick="toggleOpt(this)">нудота</span>'+
-          '<span class="opt" data-container="skargy-'+id+'" data-index="4" data-multi="true" onclick="toggleOpt(this)">блювання</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="5" data-multi="true" onclick="togSkMulti(this,'+id+')">біль в животі</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="2" data-multi="true" onclick="togSkMulti(this,'+id+')">підвищення температури</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="3" data-multi="true" onclick="togSkMulti(this,'+id+')">нудота</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="4" data-multi="true" onclick="togSkMulti(this,'+id+')">блювання</span>'+
+          '<span class="opt" data-container="skargy-'+id+'" data-index="6" data-multi="true" onclick="togSkMulti(this,'+id+')">вздуття живота</span>'+
         '</div>'+
         '<div id="pain-row-'+id+'" style="display:none;margin-top:8px">'+
           '<div class="options-row">'+
@@ -594,6 +605,7 @@ function addPatient(data) {
 
       '<div class="section"><div class="section-label">Терапія</div><div class="options-row">'+makeOpts('terapia-'+id, TERAPIA)+'</div></div>'+
 
+
       '<button class="generate-btn" onclick="generateOne('+id+')">Згенерувати щоденник</button>'+
     '</div>';
 
@@ -608,6 +620,12 @@ function toggleCard(id) {
 }
 
 function removePatient(id) { document.getElementById('patient-'+id).remove(); }
+
+function togSkMulti(el, id) {
+  // знімаємо "не висловлює" якщо вибрано щось інше
+  document.querySelectorAll('[data-container="skargy-'+id+'"][data-index="0"]').forEach(e => e.classList.remove('selected'));
+  el.classList.toggle('selected');
+}
 
 function toggleSkarga(el, id) {
   const idx = el.dataset.index;
@@ -645,7 +663,7 @@ function serializePatient(id) {
   const d = {};
   textFields.forEach(f => { d[f] = getVal(f+'-'+id); });
 
-  const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','skargy'];
+  const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','skargy','ohliad'];
   d.sel = {};
   containers.forEach(c => {
     d.sel[c] = [...document.querySelectorAll('[data-container="'+c+'-'+id+'"].selected')].map(e => e.dataset.index);
@@ -665,7 +683,7 @@ function restorePatient(id, d) {
   textFields.forEach(f => { const el = document.getElementById(f+'-'+id); if (el && d[f]) el.value = d[f]; });
 
   if (d.sel) {
-    const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func'];
+    const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','ohliad'];
     containers.forEach(c => {
       (d.sel[c]||[]).forEach(idx => {
         const el = document.querySelector('[data-container="'+c+'-'+id+'"][data-index="'+idx+'"]');
@@ -688,7 +706,45 @@ function restorePatient(id, d) {
   }
 }
 
-// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+// ── ШИФРУВАННЯ AES-GCM ────────────────────────────────────────────────────────
+async function getKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encrypt(text, password) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await getKey(password, salt);
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  // salt(16) + iv(12) + ciphertext → base64
+  const buf  = new Uint8Array(16 + 12 + ct.byteLength);
+  buf.set(salt, 0); buf.set(iv, 16); buf.set(new Uint8Array(ct), 28);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function decrypt(b64, password) {
+  const buf  = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const salt = buf.slice(0, 16);
+  const iv   = buf.slice(16, 28);
+  const ct   = buf.slice(28);
+  const key  = await getKey(password, salt);
+  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(pt);
+}
+
+// ── JSONBIN CLOUD ─────────────────────────────────────────────────────────────
+const JSONBIN_KEY = '$2a$10$o3.YLRU8tOLaE3EUkQiRHeJYJIm.vmgFoMxJCJFWzxZ6vlCBW9vLK';
+const BIN_ID_KEY = 'щоденник_bin_id';
+
 function setStatus(msg, type) {
   const el = document.getElementById('cloud-status');
   el.textContent = msg;
@@ -696,6 +752,69 @@ function setStatus(msg, type) {
   if (type==='ok') setTimeout(() => { el.textContent=''; el.className='cloud-status'; }, 3000);
 }
 
+async function saveCloud() {
+  const password = document.getElementById('enc-password').value.trim();
+  if (!password) { setStatus('Введи пароль шифрування', 'err'); return; }
+
+  const patients = [];
+  document.querySelectorAll('.patient-card').forEach(card => {
+    patients.push(serializePatient(card.id.replace('patient-','')));
+  });
+  const payload = JSON.stringify({ patients, savedAt: new Date().toISOString() });
+  setStatus('Шифрування та збереження…');
+
+  try {
+    const encrypted = await encrypt(payload, password);
+    const binId = localStorage.getItem(BIN_ID_KEY);
+    let resp;
+    if (binId) {
+      resp = await fetch('https://api.jsonbin.io/v3/b/' + binId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+        body: JSON.stringify({ d: encrypted })
+      });
+    } else {
+      resp = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name': 'щоденник', 'X-Bin-Private': 'true' },
+        body: JSON.stringify({ d: encrypted })
+      });
+      const data = await resp.json();
+      localStorage.setItem(BIN_ID_KEY, data.metadata.id);
+    }
+    if (resp.ok) { setStatus('✓ Збережено (зашифровано)', 'ok'); }
+    else { setStatus('Помилка збереження', 'err'); }
+  } catch(e) { setStatus('Помилка: ' + e.message, 'err'); }
+}
+
+async function loadCloud() {
+  const password = document.getElementById('enc-password').value.trim();
+  if (!password) { setStatus('Введи пароль шифрування', 'err'); return; }
+
+  const binId = localStorage.getItem(BIN_ID_KEY);
+  if (!binId) { setStatus('Спочатку збережи дані', 'err'); return; }
+  setStatus('Завантаження…');
+  try {
+    const resp = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    if (!resp.ok) { setStatus('Помилка завантаження', 'err'); return; }
+    const json = await resp.json();
+    let data;
+    try {
+      const decrypted = await decrypt(json.record.d, password);
+      data = JSON.parse(decrypted);
+    } catch(e) {
+      setStatus('Невірний пароль', 'err'); return;
+    }
+    document.getElementById('patients-container').innerHTML = '';
+    patientCount = 0;
+    data.patients.forEach(p => addPatient(p));
+    setStatus('✓ Завантажено (' + new Date(data.savedAt).toLocaleString('uk-UA') + ')', 'ok');
+  } catch(e) { setStatus('Помилка з\'єднання', 'err'); }
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
 function exportSession() {
   const patients = [];
   document.querySelectorAll('.patient-card').forEach(card => {
@@ -703,13 +822,11 @@ function exportSession() {
   });
   const payload = JSON.stringify({ patients, savedAt: new Date().toISOString() }, null, 2);
   const blob = new Blob([payload], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = 'obhid_' + date + '.json';
+  a.href = URL.createObjectURL(blob);
+  a.download = 'obhid_' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(a.href);
   setStatus('✓ Файл збережено', 'ok');
 }
 
@@ -723,8 +840,7 @@ function importSession(input) {
       document.getElementById('patients-container').innerHTML = '';
       patientCount = 0;
       data.patients.forEach(p => addPatient(p));
-      const d = new Date(data.savedAt);
-      setStatus('✓ Завантажено ('+d.toLocaleString('uk-UA')+')', 'ok');
+      setStatus('✓ Завантажено (' + new Date(data.savedAt).toLocaleString('uk-UA') + ')', 'ok');
     } catch(err) { setStatus('Помилка файлу', 'err'); }
   };
   reader.readAsText(file);
@@ -770,14 +886,14 @@ function buildText(id) {
         if(scale.length&&score) ps+=' ('+scale[0]+' '+score+'б)';
         parts.push(ps);
       }
-      skargySel.filter(e=>e.dataset.index>'1').forEach(e=>parts.push(e.textContent));
+      skargySel.filter(e=>e.dataset.index!=='0'&&e.dataset.index!=='1').forEach(e=>parts.push(e.textContent));
       if(skargyOther) parts.push(skargyOther);
     }
     skargyText='Скарги на момент огляду: '+parts.join(', ')+'.';
   }
 
   const tempSel=getSelected('temp-'+id);
-  const tempText=tempSel.length?'Пацієнт '+tempSel[0]+'.':'';
+  const tempText=tempSel.length?(tempSel[0]==='не лихоманить'?'Пацієнт не лихоманить.':tempSel[0][0].toUpperCase()+tempSel[0].slice(1)+'.'):'';
 
   const svidomSel=getSelected('svidom-'+id);
   const svidomText=svidomSel.length?'Свідомість '+svidomSel[0]+'.':'';
@@ -806,8 +922,11 @@ function buildText(id) {
   const enterSel=getSelected('enter-'+id), zond=getVal('zond-'+id);
   let enterText='';
   if(enterSel.length){
-    if(enterSel[0]==='по шлунковому зонду') enterText='По шлунковому зонду: '+(zond||'—')+'.';
-    else enterText=enterSel[0][0].toUpperCase()+enterSel[0].slice(1)+'.';
+    if(enterSel[0].startsWith('по шлунковому зонду')) {
+      enterText='По шлунковому зонду: '+(zond||'—')+', засвоює.';
+    } else {
+      enterText=enterSel[0][0].toUpperCase()+enterSel[0].slice(1)+'.';
+    }
   }
 
   const lm=[...document.querySelectorAll('[data-container="localis-mode-'+id+'"].selected')];
@@ -819,7 +938,7 @@ function buildText(id) {
       localisText="St. Localis: п/о рана "+rv+". Проведено перев'язку.";
     } else {
       const ps=getSelected('povyazka-'+id), po=getVal('povyazka-other-'+id);
-      let pd=ps.length?ps[0]:'';
+      let pd=ps.length?ps[0]:'суха, чиста';
       if(pd==='просякнута'&&po) pd+=' '+po;
       localisText="St. Localis: пов'язка "+pd+'.';
     }
@@ -829,7 +948,7 @@ function buildText(id) {
   let drainText='';
   if(dm.length){
     if(!dm[0].getAttribute('onclick').includes('present')){
-      drainText='Дренажі відсутні.';
+      drainText='';
     } else {
       const loc=getVal('drain-loc-'+id), ch=getVal('drain-char-'+id), fn=getSelected('drain-func-'+id);
       drainText='Дренаж '+(loc?'('+loc+') ':'')+'— '+(ch||'—')+(fn.length?', '+fn[0]:'')+'.';
@@ -841,11 +960,21 @@ function buildText(id) {
   const terSel=getSelected('terapia-'+id);
   const terText=terSel.length?terSel[0][0].toUpperCase()+terSel[0].slice(1)+'.':'';
 
+  const ohliadSel=getSelected('ohliad-'+id);
+  const ohliadText=ohliadSel.length?ohliadSel.map(o=>o[0].toUpperCase()+o.slice(1)+'.').join(' '):'';
+
+  // Об'єднуємо харчування + сеча + випорожнення в один рядок
+  const funcParts=[];
+  if(enterText) funcParts.push(enterText);
+  if(sechText) funcParts.push(sechText);
+  if(vyporText) funcParts.push(vyporText);
+  const funcLine=funcParts.join(' ');
+
   const parts=[
     vitals.join(', ')+(vitals.length?'.':''),
     stanText, skargyText, tempText, svidomText, shkiraText,
-    zhyvitText, sechText, vyporText, enterText,
-    localisText, drainText, pvkText, terText,
+    zhyvitText, funcLine,
+    localisText, drainText, pvkText, terText, ohliadText,
   ].filter(Boolean);
 
   return { name, text: parts.join('\n') };
