@@ -477,9 +477,11 @@ function addPatient(data) {
       '<div style="display:flex;align-items:center;gap:10px">'+
         '<span class="patient-title">#'+id+'</span>'+
         '<input class="patient-name-input" id="name-'+id+'" placeholder="ПІБ / ліжко" onclick="event.stopPropagation()" />'+
-        '<label style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;margin-left:8px" onclick="event.stopPropagation()">'+
-          '<input type="checkbox" id="adult-'+id+'" style="cursor:pointer"> дорослий'+
-        '</label>'+
+        '<div style="display:flex;gap:4px;margin-left:8px" onclick="event.stopPropagation()">'+
+          '<span class="opt" style="font-size:11px;padding:2px 8px" data-container="sex-'+id+'" data-index="0" onclick="toggleOpt(this)">дитина</span>'+
+          '<span class="opt" style="font-size:11px;padding:2px 8px" data-container="sex-'+id+'" data-index="1" onclick="toggleOpt(this)">чоловік</span>'+
+          '<span class="opt" style="font-size:11px;padding:2px 8px" data-container="sex-'+id+'" data-index="2" onclick="toggleOpt(this)">жінка</span>'+
+        '</div>'+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:8px">'+
         '<button class="remove-btn" onclick="event.stopPropagation();removePatient('+id+')">✕</button>'+
@@ -556,7 +558,13 @@ function addPatient(data) {
       '<div class="divider"></div>'+
 
       '<div class="section"><div class="section-label">Температура</div><div class="options-row">'+makeOpts('temp-'+id, TEMP)+'</div></div>'+
-      '<div class="section"><div class="section-label">Свідомість</div><div class="options-row">'+makeOpts('svidom-'+id, SVIDOM)+'</div></div>'+
+      '<div class="section">'+
+        '<div class="section-label">Свідомість</div>'+
+        '<div class="options-row">'+makeOpts('svidom-'+id, SVIDOM)+'</div>'+
+        '<label style="display:flex;align-items:center;gap:5px;margin-top:6px;font-size:12px;color:var(--muted);cursor:pointer">'+
+          '<input type="checkbox" id="labil-'+id+'" style="cursor:pointer"> емоційно лабільний/на'+
+        '</label>'+
+      '</div>'+
       '<div class="section"><div class="section-label">Шкірні покриви</div><div class="options-row">'+makeOpts('shkira-'+id, SHKIRA)+'</div></div>'+
 
       '<div class="divider"></div>'+
@@ -636,8 +644,8 @@ function addPatient(data) {
         '<div id="dyn-morn-'+id+'" style="display:none;margin-top:8px">'+
           '<div class="section-label">Ранок 2 · Ніч</div>'+
           '<div class="options-row">'+
-            '<span class="opt" data-container="night-'+id+'" onclick="toggleOpt(this)">ніч провела спокійно</span>'+
-            '<span class="opt" data-container="night-'+id+'" onclick="toggleOpt(this)">ніч провела неспокійно</span>'+
+            '<span class="opt" data-container="night-'+id+'" onclick="toggleOpt(this)">ніч пройшла спокійно</span>'+
+            '<span class="opt" data-container="night-'+id+'" onclick="toggleOpt(this)">ніч пройшла неспокійно</span>'+
           '</div>'+
           '<input class="text-input" id="night-other-'+id+'" placeholder="інше про ніч...">'+
           '<div class="section-label" style="margin-top:8px">Ранок 2 · Динаміка</div>'+
@@ -705,9 +713,9 @@ function serializePatient(id) {
   const d = {};
   textFields.forEach(f => { d[f] = getVal(f+'-'+id); });
   const spo2cbEl = document.getElementById('spo2-cb-'+id); d['spo2-cb'] = spo2cbEl ? spo2cbEl.checked : false;
-  const adultEl = document.getElementById('adult-'+id); d['adult'] = adultEl ? adultEl.checked : false;
+  const labilEl2 = document.getElementById('labil-'+id); d['labil'] = labilEl2 ? labilEl2.checked : false;
 
-  const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','skargy','ohliad','mode','dyn1','dyn2','night'];
+  const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','skargy','ohliad','mode','dyn1','dyn2','night','sex'];
   d.sel = {};
   containers.forEach(c => {
     d.sel[c] = [...document.querySelectorAll('[data-container="'+c+'-'+id+'"].selected')].map(e => e.dataset.index);
@@ -727,7 +735,7 @@ function restorePatient(id, d) {
   textFields.forEach(f => { const el = document.getElementById(f+'-'+id); if (el && d[f]) el.value = d[f]; });
 
   if (d.sel) {
-    const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','ohliad','mode','dyn1','dyn2','night'];
+    const containers = ['stan','reason','temp','svidom','shkira','zsym','zm','zbol','selez','peryst','sech','vypor','enter','terapia','pain-scale','povyazka','drain-func','ohliad','mode','dyn1','dyn2','night','sex'];
     containers.forEach(c => {
       (d.sel[c]||[]).forEach(idx => {
         const el = document.querySelector('[data-container="'+c+'-'+id+'"][data-index="'+idx+'"]');
@@ -894,10 +902,13 @@ function importSession(input) {
 // ── BUILD TEXT ────────────────────────────────────────────────────────────────
 function buildText(id) {
   const name = getVal('name-'+id) || 'Пацієнт #'+id;
-  const adultCb = document.getElementById('adult-'+id);
-  const isAdult = adultCb && adultCb.checked;
-  const subj = isAdult ? 'пацієнт' : 'дитина';
-  const subjCap = isAdult ? 'Пацієнт' : 'Дитина';
+  const sexSel = getSelected('sex-'+id);
+  const sex = sexSel.length ? sexSel[0] : 'дитина';
+  const isMale = sex === 'чоловік';
+  const isFemale = sex === 'жінка';
+  const isAdult = isMale || isFemale;
+  const subj = isMale ? 'пацієнт' : isFemale ? 'пацієнтка' : 'дитина';
+  const subjCap = isMale ? 'Пацієнт' : isFemale ? 'Пацієнтка' : 'Дитина';
   const t=getVal('t-'+id), hr=getVal('hr-'+id), rr=getVal('rr-'+id);
   const bps=getVal('bps-'+id), bpd=getVal('bpd-'+id), spo2=getVal('spo2-'+id);
 
@@ -946,7 +957,15 @@ function buildText(id) {
   const tempText=tempSel.length?(tempSel[0]==='не лихоманить'?'Пацієнт не лихоманить.':tempSel[0][0].toUpperCase()+tempSel[0].slice(1)+'.'):'';
 
   const svidomSel=getSelected('svidom-'+id);
-  const svidomRaw=svidomSel.length?svidomSel[0].replace('дитина',subj):'';
+  let svidomBase = svidomSel.length ? svidomSel[0] : '';
+  if (svidomBase === 'ясна, дитина доступна контакту') {
+    if (isMale) svidomBase = 'ясна, пацієнт доступний продуктивному контакту';
+    else if (isFemale) svidomBase = 'ясна, пацієнтка доступна продуктивному контакту';
+  }
+  // емоційно лабільний
+  const labilEl = document.getElementById('labil-'+id);
+  const labilSuffix = labilEl && labilEl.checked ? (isMale ? ', емоційно лабільний' : isFemale ? ', емоційно лабільна' : ', емоційно лабільна') : '';
+  const svidomRaw = svidomBase + labilSuffix;
   const svidomText=svidomRaw?'Свідомість '+svidomRaw+'.':'';
 
   const shkiraSel=getSelected('shkira-'+id);
