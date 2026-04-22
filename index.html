@@ -379,7 +379,11 @@
 
 <div id="patients-container"></div>
 
-<button class="add-patient-btn" onclick="addPatient()">+ Додати пацієнта</button>
+<div style="display:flex;gap:8px;margin-bottom:8px">
+  <button class="add-patient-btn" style="margin-bottom:0;flex:1" onclick="addPatient()">+ Додати пацієнта</button>
+  <button class="cloud-btn" onclick="collapseAll()" style="white-space:nowrap">↑ Згорнути всі</button>
+  <button class="cloud-btn" onclick="expandAll()" style="white-space:nowrap">↓ Розгорнути всі</button>
+</div>
 <button class="generate-all-btn" onclick="generateAll()">Згенерувати всі щоденники</button>
 
 <div class="output-section" id="output-section" style="display:none">
@@ -638,6 +642,7 @@ function addPatient(data) {
           '<div class="section-label">Вечір · Динаміка</div>'+
           '<div class="options-row">'+
             '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">позитивна</span>'+
+            '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">стабільна</span>'+
             '<span class="opt" data-container="dyn1-'+id+'" onclick="toggleOpt(this)">негативна</span>'+
           '</div>'+
         '</div>'+
@@ -651,6 +656,7 @@ function addPatient(data) {
           '<div class="section-label" style="margin-top:8px">Ранок 2 · Динаміка</div>'+
           '<div class="options-row">'+
             '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">позитивна</span>'+
+            '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">стабільна</span>'+
             '<span class="opt" data-container="dyn2-'+id+'" onclick="toggleOpt(this)">негативна</span>'+
           '</div>'+
         '</div>'+
@@ -664,6 +670,15 @@ function addPatient(data) {
 }
 
 // ── UI HANDLERS ───────────────────────────────────────────────────────────────
+function collapseAll() {
+  document.querySelectorAll('.patient-body').forEach(b => b.classList.remove('open'));
+  document.querySelectorAll('.chevron').forEach(c => c.classList.remove('open'));
+}
+function expandAll() {
+  document.querySelectorAll('.patient-body').forEach(b => b.classList.add('open'));
+  document.querySelectorAll('.chevron').forEach(c => c.classList.add('open'));
+}
+
 function toggleCard(id) {
   document.getElementById('body-'+id).classList.toggle('open');
   document.getElementById('chev-'+id).classList.toggle('open');
@@ -699,6 +714,9 @@ function setLocalisMode(el, id, mode) {
   el.classList.add('selected');
   document.getElementById('localis-perviazka-'+id).style.display = mode==='perviazka' ? 'block' : 'none';
   document.getElementById('localis-povyazka-'+id).style.display  = mode==='povyazka'  ? 'block' : 'none';
+  // показати/сховати дренажі
+  const drainSection = document.getElementById('drain-section-'+id);
+  if (drainSection) drainSection.style.display = mode==='noop' ? 'none' : 'block';
 }
 
 function setDrainMode(el, id, mode) {
@@ -797,6 +815,13 @@ async function decrypt(b64, password) {
 const JSONBIN_KEY = '$2a$10$o3.YLRU8tOLaE3EUkQiRHeJYJIm.vmgFoMxJCJFWzxZ6vlCBW9vLK';
 const BIN_ID_KEY = 'щоденник_bin_id';
 
+function applyBinId() {
+  const val = document.getElementById('manual-bin-id').value.trim();
+  if (!val) { setStatus('Введи Bin ID', 'err'); return; }
+  localStorage.setItem(BIN_ID_KEY, val);
+  setStatus('✓ Bin ID збережено', 'ok');
+}
+
 function setStatus(msg, type) {
   const el = document.getElementById('cloud-status');
   el.textContent = msg;
@@ -834,7 +859,10 @@ async function saveCloud() {
       const data = await resp.json();
       localStorage.setItem(BIN_ID_KEY, data.metadata.id);
     }
-    if (resp.ok) { setStatus('✓ Збережено (зашифровано)', 'ok'); }
+    if (resp.ok) {
+      const bid = localStorage.getItem(BIN_ID_KEY);
+      setStatus('✓ Збережено. Bin ID: '+bid, 'ok');
+    }
     else { setStatus('Помилка збереження', 'err'); }
   } catch(e) { setStatus('Помилка: ' + e.message, 'err'); }
 }
@@ -1002,7 +1030,10 @@ function buildText(id) {
   const lm=[...document.querySelectorAll('[data-container="localis-mode-'+id+'"].selected')];
   let localisText='';
   if(lm.length){
-    const mode=lm[0].getAttribute('onclick').includes('perviazka')?'perviazka':'povyazka';
+    const modeStr=lm[0].getAttribute('onclick');
+    if(modeStr.includes("'noop'")) { localisText=''; }
+    else
+    { const mode=modeStr.includes('perviazka')?'perviazka':'povyazka';
     if(mode==='perviazka'){
       const rv=getVal('rana-'+id)||'чиста, без ознак запалення';
       localisText="St. Localis: п/о рана "+rv+". Проведено перев'язку.";
@@ -1012,11 +1043,13 @@ function buildText(id) {
       if(pd==='просякнута'&&po) pd+=' '+po;
       localisText="St. Localis: пов'язка "+pd+'.';
     }
+    } // end else noop
   }
 
+  const isNoop = lm.length && lm[0].getAttribute('onclick').includes("'noop'");
   const dm=[...document.querySelectorAll('[data-container="drain-mode-'+id+'"].selected')];
   let drainText='';
-  if(dm.length){
+  if(!isNoop && dm.length){
     if(!dm[0].getAttribute('onclick').includes('present')){
       drainText='';
     } else {
@@ -1104,6 +1137,7 @@ function formatDyn(sel) {
   return 'Динаміка ' + sel[0] + '.';
 }
 
+
 function buildDiary(baseText, ageIdx, id, nightText, dynText) {
   const lines = baseText.split('\n');
   // нові вітальні
@@ -1111,7 +1145,8 @@ function buildDiary(baseText, ageIdx, id, nightText, dynText) {
     const vi = lines.findIndex(l => l.includes('Т -'));
     if (vi >= 0) lines[vi] = buildVitals(id, ageIdx);
   }
-  // після стану: спочатку ніч, потім динаміка
+  // після стану: спочатку ніч потім динаміка
+  // вставляємо в зворотньому порядку бо splice зсуває вниз
   if (dynText) insertAfterStan(lines, dynText);
   if (nightText) insertAfterStan(lines, nightText);
   return lines.join('\n');
